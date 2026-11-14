@@ -1,1 +1,14 @@
-go-memblkid
+# Build output
+/build/
+/blkidscan
+/go-memblkid
+
+# Go test and coverage artefacts
+*.test
+*.out
+
+# Editors and tooling
+.DS_Store
+.idea/
+.vscode/
+*.swp

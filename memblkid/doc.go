@@ -1,3 +1,0 @@
-package memblkid
-
-import "C"

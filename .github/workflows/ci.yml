@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Go ${{ matrix.go }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The version the module declares, and the current release.
+        go: ["1.22.x", "stable"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Install libblkid and the mkfs utilities the tests build images with
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libblkid-dev pkg-config e2fsprogs xfsprogs dosfstools btrfs-progs
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt would change these files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with the race detector
+        run: go test -race ./...
+
+      - name: Test with the address sanitizer
+        run: go test -asan ./...
+
+      - name: Test the C library on its own
+        run: make test-c
+
+      - name: Test the C library with the sanitizers
+        run: make test-c-sanitize
+
+      - name: Fuzz for a short while
+        run: go test -run '^$' -fuzz FuzzGetFilesystemTypeFromBuffer -fuzztime 30s ./fs
